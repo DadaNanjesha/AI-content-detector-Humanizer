@@ -146,8 +146,8 @@ def humanize(req: HumanizeRequest):
     }
 
 
-if __name__ == "__main__":
-    # Quick developer run: python api/humanize_api.py
-    import uvicorn
+# if __name__ == "__main__":
+#     # Quick developer run: python api/humanize_api.py
+#     import uvicorn
 
-    uvicorn.run("api.humanize_api:app", host="127.0.0.1", port=8000, reload=True)
+#     uvicorn.run("api.humanize_api:app", host="127.0.0.1", port=8000, reload=True)
