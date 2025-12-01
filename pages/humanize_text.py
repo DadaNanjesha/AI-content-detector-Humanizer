@@ -72,8 +72,10 @@ PLACEHOLDER_REGEX = re.compile(r"\[\s*\[\s*REF_(\d+)\s*\]\s*\]")
 def restore_citations(text, placeholder_map):
 
     def replace_placeholder(match):
-        placeholder = match.group(0)
-        return placeholder_map.get(placeholder, placeholder)
+        # match.group(1) contains the numeric index captured from the placeholder
+        idx = match.group(1)
+        key = f"[[REF_{idx}]]"
+        return placeholder_map.get(key, match.group(0))
 
     restored = PLACEHOLDER_REGEX.sub(replace_placeholder, text)
     return restored
@@ -188,6 +190,24 @@ def minimal_rewriting(text, p_syn=0.2, p_trans=0.2):
         minimal_humanize_line(ln, p_syn=p_syn, p_trans=p_trans) for ln in lines
     ]
     return " ".join(out_lines)
+
+
+def preserve_linebreaks_rewrite(text, p_syn=0.2, p_trans=0.2):
+    """Rewrite text while preserving original line breaks.
+
+    Splits the input on newline characters and rewrites each non-empty line
+    independently, keeping blank lines and original line structure.
+    """
+    lines = text.splitlines()
+    out_lines = []
+    for ln in lines:
+        if not ln.strip():
+            out_lines.append("")
+        else:
+            out_lines.append(minimal_rewriting(
+                ln, p_syn=p_syn, p_trans=p_trans))
+    # Rejoin using single newline to preserve original paragraph/line breaks
+    return "\n".join(out_lines)
 
 
 ########################################
@@ -308,8 +328,8 @@ def show_humanize_page():
             no_refs_text, placeholders = extract_citations(input_text)
             
         with st.spinner("✍️ Enhancing writing style and flow..."):
-            # Apply humanization
-            partially_rewritten = minimal_rewriting(
+            # Apply humanization while preserving line breaks
+            partially_rewritten = preserve_linebreaks_rewrite(
                 no_refs_text, p_syn=p_syn, p_trans=p_trans
             )
             
@@ -317,22 +337,27 @@ def show_humanize_page():
             # Restore citations
             final_text = restore_citations(partially_rewritten, placeholders)
 
-            # Normalize spaces around punctuation
-            final_text = re.sub(r"\s+([.,;:!?])", r"\1", final_text)
-            final_text = re.sub(r"(\()\s+", r"\1", final_text)
-            final_text = re.sub(r"\s+(\))", r")", final_text)
+            # Normalize spaces around punctuation but do not remove newlines
+            final_text = re.sub(r"[ \t]+([.,;:!?])", r"\1", final_text)
+            final_text = re.sub(r"(\()[ \t]+", r"\1", final_text)
+            final_text = re.sub(r"[ \t]+(\))", r"\1", final_text)
+            # Collapse multiple spaces/tabs (but keep newlines)
+            final_text = re.sub(r"[ \t]{2,}", " ", final_text)
+            # Normalize paired tokenized quotes: `` ... '' -> "..." (remove stray spaces)
+            final_text = re.sub(r"``\s*(.+?)\s*''", r'"\1"', final_text)
 
         # Calculate new stats
         new_wc = count_words(final_text)
         new_sc = count_sentences(final_text)
 
         st.subheader("🎉 Your Humanized Text")
-        
+
         st.success(f"✅ Successfully enhanced your text! Added **{new_wc - orig_wc} words** and **{new_sc - orig_sc} sentences** for better flow.")
-        
+
+        # Single editable output box that preserves original line breaks and paragraphs
         st.text_area(
-            "Humanized Result", 
-            final_text, 
+            "Humanized Result",
+            final_text,
             height=300,
             label_visibility="collapsed"
         )

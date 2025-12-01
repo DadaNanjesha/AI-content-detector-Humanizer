@@ -74,20 +74,12 @@ def sentence_level_rewrite(text, t5_pipeline, min_len=0, max_len=512):
 def minimal_humanize_text(text):
     """
     Minimal rewriting approach:
-      1) Replace references with placeholders
-      2) Rewrite each sentence with T5
-      3) Restore references
+    1) Rewrite each sentence with T5 without replacing references so they remain unchanged.
     """
-    # 1) placeholders
-    replaced, placeholder_map = extract_citations(text)
-    
-    # 2) rewrite each sentence
+    # Directly rewrite the original text so citations/references remain intact.
     t5 = load_t5_model()
-    rewritten = sentence_level_rewrite(replaced, t5)
-    
-    # 3) restore references
-    final = restore_citations(rewritten, placeholder_map)
-    return final
+    rewritten = sentence_level_rewrite(text, t5)
+    return rewritten
 
 def count_words(text):
     return len(word_tokenize(text))
@@ -100,7 +92,8 @@ def count_sentences(text):
 ###############################################
 def main():
     st.title("Minimal, Fast T5 Humanizer")
-    st.write("A simpler approach: references → placeholders → T5 rewriting sentence by sentence → restore references.")
+    st.write(
+        "A simpler approach: sentence-level T5 rewriting while preserving references/citations.")
 
     input_text = st.text_area("Enter text", height=200)
     if st.button("Rewrite"):
